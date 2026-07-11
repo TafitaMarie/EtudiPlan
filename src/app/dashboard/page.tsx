@@ -2,7 +2,7 @@ import AppLayout from "@/app/components/layout/appLayout";
 import StatCard from "./statCard";
 import { Wallet, ListTodo, CalendarCheck, GraduationCap, Circle, Lightbulb, CalendarDays } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import type { Transaction, Tache } from "@prisma/client";
+import type { Transaction, Tache } from "@/generated/prisma/client";
 import { requireUserId } from "@/lib/getCurrentUserId";
 
 function formatAriary(amount: number) {
