@@ -2,10 +2,22 @@ import AppLayout from "@/app/components/layout/appLayout";
 import { getTransactions } from "./actions";
 import ClientBudget from "./ClientBudget";
 
+type RawTransaction = {
+  id: number;
+  userId: number;
+  libelle: string;
+  categorie: string;
+  montant: number;
+  type: string;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export default async function Budget() {
   const transactions = await getTransactions();
 
-  const serialized = transactions.map((t) => ({
+  const serialized = (transactions as RawTransaction[]).map((t) => ({
     ...t,
     type: t.type as "REVENU" | "DEPENSE",
     date: t.date.toISOString(),
