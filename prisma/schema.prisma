@@ -1,40 +1,113 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model Tache {
   id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   titre     String
+  matiere   String?
+  dateLimite DateTime?
+  priorite  Priorite @default(MOYENNE)
+  statut    Statut   @default(A_FAIRE)
   faite     Boolean  @default(false)
+  ordre     Int      @default(0)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dateLimite])
 }
 
-model Cours {
-  id          Int    @id @default(autoincrement())
-  matiere     String
-  jour        String
-  heureDebut  String
-  heureFin    String
-  salle       String
-  couleur     String @default("blue")
+model Event {
+  id        Int        @id @default(autoincrement())
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  type      EventType
+  room      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  endDate   DateTime
+  repeat    RepeatType @default(NONE)
+  startDate DateTime
+  color     EventColor @default(BLUE)
+
+  @@index([userId])
+  @@index([startDate])
 }
 
 model Transaction {
-  id        Int      @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   libelle   String
   categorie String
   montant   Float
-  type      String
-  date      DateTime @default(now())
+  type      TransactionType
+  date      DateTime        @default(now())
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model User {
+  id               Int             @id @default(autoincrement())
+  name             String?
+  email            String          @unique
+  hashedPassword   String
+  verified         Boolean         @default(false)
+  verifyToken      String?
+  resetToken       String?
+  resetTokenExpires DateTime?
+  taches           Tache[]
+  events           Event[]
+  transactions     Transaction[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([email])
+}
+
+enum EventType {
+  COURSE
+  EXAM
+}
+
+enum RepeatType {
+  NONE
+  WEEKLY
+}
+
+enum EventColor {
+  BLUE
+  GREEN
+  ORANGE
+  PURPLE
+  RED
+}
+
+enum Priorite {
+  BASSE
+  MOYENNE
+  HAUTE
+}
+
+enum Statut {
+  A_FAIRE
+  EN_COURS
+  TERMINEE
+}
+
+enum TransactionType {
+  REVENU
+  DEPENSE
 }

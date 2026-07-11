@@ -1,21 +1,24 @@
-import CourseBlock, { Cours } from "./courseBlock";
+import CourseBlock, { Event } from "./courseBlock";
 
 type DayColumnProps = {
   nom: string;
-  cours: Cours[];
+  events: Event[];
 };
 
-export default function DayColumn({ nom, cours }: DayColumnProps) {
+export default function DayColumn({
+  nom,
+  events,
+}: DayColumnProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-      <h2 className="font-bold text-gray-900 mb-3">{nom}</h2>
+    <div className="bg-card rounded-2xl border border-card-border shadow-sm p-4">
+      <h2 className="font-bold text-foreground mb-3">{nom}</h2>
 
-      {cours.length === 0 ? (
-        <p className="text-sm text-gray-400 italic">Aucun cours</p>
+      {events.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">Aucun événement</p>
       ) : (
         <div className="space-y-2">
-          {cours.map((c) => (
-            <CourseBlock key={c.id} cours={c} />
+          {events.map((event) => (
+            <CourseBlock key={event.id} event={event} />
           ))}
         </div>
       )}
