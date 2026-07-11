@@ -20,7 +20,7 @@ function isSameDay(a: Date, b: Date) {
 export default async function Dashboard() {
   const userId = await requireUserId();
   const now = new Date();
-  const [taches, transactions, prochainCours, evenementsAvenir] = await Promise.all([
+  const [rawTaches, rawTransactions, prochainCours, evenementsAvenir] = await Promise.all([
     prisma.tache.findMany({
       where: { userId, faite: false },
       orderBy: [{ priorite: "desc" }, { dateLimite: "asc" }, { createdAt: "asc" }],
@@ -36,7 +36,10 @@ export default async function Dashboard() {
     prisma.event.count({ where: { userId, startDate: { gte: now } } }),
   ]);
 
-  const solde = transactions.reduce((s: number, t: Transaction) => (t.type === "REVENU" ? s + (t.montant ?? 0) : s - (t.montant ?? 0)), 0);
+  const taches = rawTaches as Tache[];
+  const transactions = rawTransactions as Transaction[];
+
+  const solde = transactions.reduce((s, t) => (t.type === "REVENU" ? s + (t.montant ?? 0) : s - (t.montant ?? 0)), 0);
   const nbTachesRestantes = taches.length;
   const nbTachesUrgentes = taches.filter((t) => t.priorite === "HAUTE").length;
   const tachesDuJour = taches.filter((t) => t.dateLimite && isSameDay(new Date(t.dateLimite), now));
