@@ -10,6 +10,6 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: process.env.POSTGRES_PRISMA_URL ?? process.env.DATABASE_URL ?? "postgresql://localhost:5432/etudiplan",
+    url: process.env.DATABASE_URL ?? "file:./dev.db",
   },
 });
