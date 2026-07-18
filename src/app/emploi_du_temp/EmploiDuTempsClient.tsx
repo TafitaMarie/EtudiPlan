@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import DayColumn from "./dayColumn";
 import CourseBlock, { Event } from "./courseBlock";
-import { ChevronLeft, ChevronRight, Calendar, Grid3X3, CalendarDays, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Grid3X3, CalendarDays, Plus, X, Loader2 } from "lucide-react";
 import { deleteEvent } from "./actions";
+import { useToast } from "@/app/contexts/toastProvider";
 
 type Props = {
   events: Event[];
@@ -15,11 +16,11 @@ type Props = {
 const LOCALE = "fr-FR";
 
 const monthColorMap: Record<string, string> = {
-  BLUE: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
-  GREEN: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300",
-  ORANGE: "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300",
-  PURPLE: "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
-  RED: "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300",
+  BLUE: "bg-blue-200 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+  GREEN: "bg-green-200 dark:bg-green-900 text-green-700 dark:text-green-300",
+  ORANGE: "bg-orange-200 dark:bg-orange-900 text-orange-700 dark:text-orange-300",
+  PURPLE: "bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
+  RED: "bg-red-200 dark:bg-red-900 text-red-700 dark:text-red-300",
 };
 
 function getStartOfWeek(date: Date) {
@@ -31,18 +32,35 @@ function getStartOfWeek(date: Date) {
   return d;
 }
 
+const buttonStyle = (viewMode: string, currentMode: string) =>
+  `px-5 py-2 rounded-xl text-sm font-medium transition-colors ${
+    viewMode === currentMode
+      ? "bg-primary text-primary-foreground shadow-sm"
+      : "text-muted-foreground hover:text-foreground bg-card border border-card-border"
+  }`;
+
 export default function EmploiDuTempsClient({ events }: Props) {
   const [viewMode, setViewMode] = useState<"DAY" | "WEEK" | "MONTH">("WEEK");
   const [showAdd, setShowAdd] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const router = useRouter();
+  const { addToast } = useToast();
   const refresh = () => router.refresh();
 
   async function handleDelete(id: number) {
-    await deleteEvent(id);
-    refresh();
+    setDeletingId(id);
+    try {
+      await deleteEvent(id);
+      addToast("Événement supprimé", "success");
+      refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Erreur lors de la suppression", "error");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function handleEdit(event: Event) {
@@ -86,13 +104,6 @@ export default function EmploiDuTempsClient({ events }: Props) {
       }
       return false;
     });
-
-  const buttonStyle = (mode: string) =>
-    `px-5 py-2 rounded-xl text-sm font-medium transition-colors ${
-      viewMode === mode
-        ? "bg-primary text-primary-foreground shadow-sm"
-        : "text-muted-foreground hover:text-foreground bg-card border border-card-border"
-    }`;
 
   return (
     <div className="space-y-4">
@@ -138,15 +149,15 @@ export default function EmploiDuTempsClient({ events }: Props) {
         {/* View toggle + Ajouter */}
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5 bg-muted p-1 rounded-xl border border-card-border">
-            <button onClick={() => setViewMode("DAY")} className={buttonStyle("DAY")}>
+            <button onClick={() => setViewMode("DAY")} className={buttonStyle(viewMode, "DAY")}>
               <Calendar size={16} className="inline mr-1.5" />
               Jour
             </button>
-            <button onClick={() => setViewMode("WEEK")} className={buttonStyle("WEEK")}>
+            <button onClick={() => setViewMode("WEEK")} className={buttonStyle(viewMode, "WEEK")}>
               <Grid3X3 size={16} className="inline mr-1.5" />
               Semaine
             </button>
-            <button onClick={() => setViewMode("MONTH")} className={buttonStyle("MONTH")}>
+            <button onClick={() => setViewMode("MONTH")} className={buttonStyle(viewMode, "MONTH")}>
               <CalendarDays size={16} className="inline mr-1.5" />
               Mois
             </button>
@@ -183,6 +194,7 @@ export default function EmploiDuTempsClient({ events }: Props) {
               events={eventsForDay(d)}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              deletingId={deletingId}
             />
           ))}
         </div>
@@ -202,7 +214,7 @@ export default function EmploiDuTempsClient({ events }: Props) {
             ) : (
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {dayEvents.map((event) => (
-                  <CourseBlock key={event.id} event={event} onEdit={handleEdit} onDelete={handleDelete} />
+                  <CourseBlock key={event.id} event={event} onEdit={handleEdit} onDelete={handleDelete} deleting={deletingId === event.id} />
                 ))}
               </div>
             )}

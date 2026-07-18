@@ -13,7 +13,6 @@ import {
   LogOut,
   Moon,
   Sun,
-  Search,
   Settings,
   ChevronDown,
   User,

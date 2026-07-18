@@ -24,9 +24,11 @@ Application web de gestion étudiante : tâches, emploi du temps, budget.
 src/
 ├── app/
 │   ├── api/auth/          # API REST (login, signup, logout...)
-│   ├── taches/            # Module tâches
-│   ├── emploi_du_temp/    # Module emploi du temps
-│   ├── budget/            # Module budget
+│   ├── taches/            # Module tâches (Server Actions)
+│   ├── emploi_du_temp/    # Module emploi du temps (Server Actions)
+│   ├── budget/            # Module budget (Server Actions)
+│   ├── dashboard/         # Tableau de bord (Server Component)
+│   ├── parametres/        # Paramètres profil
 │   ├── components/        # Sidebar, AppLayout
 │   ├── login/             # Page connexion
 │   ├── signup/            # Page inscription
@@ -85,6 +87,17 @@ npx prisma studio      # Interface graphique pour voir/modifier les données
 npm install
 npx prisma generate
 npx prisma db push
+npm run seed       # Données de démonstration (optionnel)
 npm run dev        # → http://localhost:3000
 npm run build      # Build production
 ```
+
+## Compte démo
+
+Après avoir lancé `npm run seed`, connecte-toi avec :
+
+- **Email :** `demo@etudiplan.mg`
+- **Mot de passe :** `password123`
+
+Ce compte contient des tâches, un emploi du temps et des transactions pré-remplis.
+Les nouveaux utilisateurs inscrits via `/signup` commencent avec un compte vide.

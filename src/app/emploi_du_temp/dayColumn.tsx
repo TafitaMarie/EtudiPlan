@@ -5,6 +5,7 @@ type DayColumnProps = {
   events: Event[];
   onEdit?: (event: Event) => void;
   onDelete?: (id: number) => void;
+  deletingId?: number | null;
 };
 
 export default function DayColumn({
@@ -12,6 +13,7 @@ export default function DayColumn({
   events,
   onEdit,
   onDelete,
+  deletingId,
 }: DayColumnProps) {
   return (
     <div className="bg-card rounded-2xl border border-card-border shadow-sm p-4">
@@ -22,7 +24,7 @@ export default function DayColumn({
       ) : (
         <div className="space-y-2">
           {events.map((event) => (
-            <CourseBlock key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} />
+            <CourseBlock key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} deleting={deletingId === event.id} />
           ))}
         </div>
       )}

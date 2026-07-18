@@ -3,6 +3,7 @@
 import { type ChangeEvent, useState, useEffect } from "react";
 import { createEvent, updateEvent } from "./actions";
 import { Event } from "./courseBlock";
+import { useToast } from "@/app/contexts/toastProvider";
 
 type Props = {
   onAdded: () => void;
@@ -20,6 +21,7 @@ function toDatetimeLocal(date: Date): string {
 }
 
 export default function AddEventForm({ onAdded, onCancelled, event: editEvent }: Props) {
+  const { addToast } = useToast();
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"COURSE" | "EXAM">("COURSE");
   const [startDate, setStartDate] = useState("");
@@ -78,8 +80,8 @@ export default function AddEventForm({ onAdded, onCancelled, event: editEvent }:
       setRepeat("NONE");
       setRepeatEndDate("");
       onAdded();
-    } catch {
-      // silently fail for now
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Erreur lors de l'enregistrement", "error");
     } finally {
       setLoading(false);
     }

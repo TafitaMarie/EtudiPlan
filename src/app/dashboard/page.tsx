@@ -1,6 +1,6 @@
 import AppLayout from "@/app/components/layout/appLayout";
 import StatCard from "./statCard";
-import { Wallet, ListTodo, CalendarCheck, GraduationCap, Circle, Lightbulb, CalendarDays } from "lucide-react";
+import { Wallet, ListTodo, TrendingUp, TrendingDown, Circle, CalendarDays } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import type { Transaction, Tache } from "@prisma/client";
 import { requireUserId } from "@/lib/getCurrentUserId";
@@ -20,7 +20,7 @@ function isSameDay(a: Date, b: Date) {
 export default async function Dashboard() {
   const userId = await requireUserId();
   const now = new Date();
-  const [rawTaches, rawTransactions, prochainCours, evenementsAvenir] = await Promise.all([
+  const [rawTaches, rawTransactions, prochainEvent, evenementsAvenir] = await Promise.all([
     prisma.tache.findMany({
       where: { userId, faite: false },
       orderBy: [{ priorite: "desc" }, { dateLimite: "asc" }, { createdAt: "asc" }],
@@ -86,14 +86,14 @@ export default async function Dashboard() {
     emoji = "💪";
   }
 
-  const nextCourseTime = prochainCours
-    ? new Date(prochainCours.startDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const nextEventTime = prochainEvent
+    ? new Date(prochainEvent.startDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "—";
-  const nextCourseDay = prochainCours
-    ? new Date(prochainCours.startDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+  const nextEventDay = prochainEvent
+    ? new Date(prochainEvent.startDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
     : "";
-  const nextCourseType = prochainCours ? (prochainCours.type === "COURSE" ? "Cours" : "Examen") : "";
-  const nextCourseRoom = prochainCours?.room ?? "Salle non définie";
+  const nextEventType = prochainEvent ? (prochainEvent.type === "COURSE" ? "Cours" : "Examen") : "";
+  const nextEventRoom = prochainEvent?.room ?? "Salle non définie";
 
   return (
     <AppLayout>
@@ -104,8 +104,8 @@ export default async function Dashboard() {
         <StatCard title="Solde total" value={formatAriary(solde)} icon={Wallet} color="blue" />
         <StatCard title="Tâches à faire" value={`${nbTachesRestantes}`} icon={ListTodo} color="green" />
         <StatCard title="Événements à venir" value={`${evenementsAvenir}`} icon={CalendarDays} color="blue" />
-        <StatCard title="Dépenses ce mois" value={formatAriary(depensesCeMois)} icon={Wallet} color="orange" />
-        <StatCard title="Revenus ce mois" value={formatAriary(revenusCeMois)} icon={GraduationCap} color="purple" />
+        <StatCard title="Dépenses ce mois" value={formatAriary(depensesCeMois)} icon={TrendingDown} color="orange" />
+        <StatCard title="Revenus ce mois" value={formatAriary(revenusCeMois)} icon={TrendingUp} color="purple" />
       </div>
 
       <div className="mt-8 bg-card rounded-2xl border border-card-border shadow-sm p-6">
@@ -131,26 +131,26 @@ export default async function Dashboard() {
         )}
       </div>
 
-      {prochainCours ? (
+      {prochainEvent ? (
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           <div className="rounded-2xl bg-card border border-card-border p-6 shadow-sm">
             <p className="text-sm text-muted-foreground">Événement</p>
-            <p className="mt-2 text-xl font-semibold text-foreground">{prochainCours.title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{nextCourseType}</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{prochainEvent.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{nextEventType}</p>
           </div>
           <div className="rounded-2xl bg-card border border-card-border p-6 shadow-sm">
             <p className="text-sm text-muted-foreground">Date</p>
-            <p className="mt-2 text-xl font-semibold text-foreground">{nextCourseDay}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{nextCourseTime}</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{nextEventDay}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{nextEventTime}</p>
           </div>
           <div className="rounded-2xl bg-card border border-card-border p-6 shadow-sm">
             <p className="text-sm text-muted-foreground">Salle</p>
-            <p className="mt-2 text-xl font-semibold text-foreground">{nextCourseRoom}</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{nextEventRoom}</p>
           </div>
         </div>
       ) : (
         <div className="mt-8 rounded-2xl bg-card border border-card-border p-6 shadow-sm">
-          <p className="text-sm text-muted-foreground">Prochain cours</p>
+          <p className="text-sm text-muted-foreground">Prochain événement</p>
           <p className="mt-2 text-lg font-semibold text-foreground">Aucun événement prévu</p>
           <p className="mt-1 text-sm text-muted-foreground">Ajoute un cours ou un examen dans l&rsquo;emploi du temps pour le voir ici.</p>
         </div>

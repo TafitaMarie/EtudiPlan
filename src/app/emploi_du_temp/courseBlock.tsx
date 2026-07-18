@@ -1,4 +1,4 @@
-import { Clock, MapPin, Pencil, Trash2 } from "lucide-react";
+import { Clock, MapPin, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export type Event = {
   id: number;
@@ -13,17 +13,18 @@ export type Event = {
 };
 
 const couleurStyles = {
-  BLUE: "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300",
-  GREEN: "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
-  ORANGE: "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300",
-  PURPLE: "bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300",
-  RED: "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300",
+  BLUE: "bg-blue-100 dark:bg-blue-950 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300",
+  GREEN: "bg-green-100 dark:bg-green-950 border-green-300 dark:border-green-800 text-green-700 dark:text-green-300",
+  ORANGE: "bg-orange-100 dark:bg-orange-950 border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-300",
+  PURPLE: "bg-purple-100 dark:bg-purple-950 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300",
+  RED: "bg-red-100 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300",
 };
 
-export default function CourseBlock({ event, onEdit, onDelete }: {
+export default function CourseBlock({ event, onEdit, onDelete, deleting }: {
   event: Event;
   onEdit?: (event: Event) => void;
   onDelete?: (id: number) => void;
+  deleting?: boolean;
 }) {
   const heureDebut = new Date(event.startDate).toLocaleTimeString([], {
     hour: "2-digit",
@@ -55,10 +56,11 @@ export default function CourseBlock({ event, onEdit, onDelete }: {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onDelete(event.id); }}
-              className="rounded-full bg-white/80 dark:bg-black/50 p-1 text-destructive hover:text-destructive/80 shadow-sm"
+              disabled={deleting}
+              className="rounded-full bg-white/80 dark:bg-black/50 p-1 text-destructive hover:text-destructive/80 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Supprimer"
             >
-              <Trash2 size={12} />
+              {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
             </button>
           )}
         </div>

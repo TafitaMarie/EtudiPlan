@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useState, useTransition, useCallback } from "react";
 import { Circle, CheckCircle2, Plus, Trash2, Search, X, GripVertical, Pencil } from "lucide-react";
+import { useToast } from "@/app/contexts/toastProvider";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -27,19 +28,20 @@ type Tache = {
 };
 
 const badgeStyles: Record<string, string> = {
-  BASSE: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
-  MOYENNE: "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300",
-  HAUTE: "bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300",
-  A_FAIRE: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
-  EN_COURS: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
-  TERMINEE: "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300",
+  BASSE: "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+  MOYENNE: "bg-amber-200 dark:bg-yellow-900 text-amber-800 dark:text-yellow-300",
+  HAUTE: "bg-rose-200 dark:bg-rose-900 text-rose-700 dark:text-rose-300",
+  A_FAIRE: "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+  EN_COURS: "bg-blue-200 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+  TERMINEE: "bg-emerald-200 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300",
 };
 
-function SortableRow({ tache, onEdit, onToggle, onSupprimer }: {
+function SortableRow({ tache, onEdit, onToggle, onSupprimer, loading }: {
   tache: Tache;
   onEdit: (tache: Tache) => void;
   onToggle: (id: number, faite: boolean) => void;
   onSupprimer: (id: number) => void;
+  loading: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tache.id });
 
@@ -107,16 +109,18 @@ function SortableRow({ tache, onEdit, onToggle, onSupprimer }: {
           <button
             type="button"
             onClick={() => onToggle(tache.id, tache.faite)}
-            className="rounded-2xl bg-muted px-3 py-2 text-xs font-medium text-foreground hover:bg-card-border transition-colors"
+            disabled={loading}
+            className="rounded-2xl bg-muted px-3 py-2 text-xs font-medium text-foreground hover:bg-card-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {tache.faite ? "Annuler" : "Terminer"}
+            {loading ? "..." : tache.faite ? "Annuler" : "Terminer"}
           </button>
           <button
             type="button"
             onClick={() => onSupprimer(tache.id)}
-            className="rounded-2xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
+            disabled={loading}
+            className="rounded-2xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Trash2 size={14} className="inline" /> Supprimer
+            {loading ? "..." : <><Trash2 size={14} className="inline" /> Supprimer</>}
           </button>
         </div>
       </td>
@@ -126,6 +130,7 @@ function SortableRow({ tache, onEdit, onToggle, onSupprimer }: {
 
 export default function TachesClient({ taches }: { taches: Tache[] }) {
   const router = useRouter();
+  const { addToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [titre, setTitre] = useState("");
   const [matiere, setMatiere] = useState("");
@@ -134,6 +139,7 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
   const [statut, setStatut] = useState<"A_FAIRE" | "EN_COURS" | "TERMINEE">("A_FAIRE");
 
   const [editingTache, setEditingTache] = useState<Tache | null>(null);
+  const [loadingRows, setLoadingRows] = useState<Set<number>>(new Set());
 
   const [filterStatut, setFilterStatut] = useState<string>("TOUS");
   const [filterPriorite, setFilterPriorite] = useState<string>("TOUS");
@@ -144,18 +150,24 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
     if (titre.trim() === "") return;
 
     startTransition(async () => {
-      if (editingTache) {
-        await modifierTacheAction(editingTache.id, titre, matiere || null, dateLimite || null, priorite, statut);
-      } else {
-        await ajouterTacheAction(titre, matiere || null, dateLimite || null, priorite, statut);
+      try {
+        if (editingTache) {
+          await modifierTacheAction(editingTache.id, titre, matiere || null, dateLimite || null, priorite, statut);
+          addToast("Tâche modifiée", "success");
+        } else {
+          await ajouterTacheAction(titre, matiere || null, dateLimite || null, priorite, statut);
+          addToast("Tâche ajoutée", "success");
+        }
+        setTitre("");
+        setMatiere("");
+        setDateLimite("");
+        setPriorite("MOYENNE");
+        setStatut("A_FAIRE");
+        setEditingTache(null);
+        router.refresh();
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "Erreur lors de l'enregistrement", "error");
       }
-      setTitre("");
-      setMatiere("");
-      setDateLimite("");
-      setPriorite("MOYENNE");
-      setStatut("A_FAIRE");
-      setEditingTache(null);
-      router.refresh();
     });
   }
 
@@ -169,16 +181,32 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
   }
 
   async function handleToggle(id: number, faite: boolean) {
+    setLoadingRows((prev) => new Set(prev).add(id));
     startTransition(async () => {
-      await toggleTacheAction(id, faite);
-      router.refresh();
+      try {
+        await toggleTacheAction(id, faite);
+        addToast(faite ? "Tâche marquée comme non terminée" : "Tâche terminée", "success");
+        router.refresh();
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "Erreur lors du changement de statut", "error");
+      } finally {
+        setLoadingRows((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      }
     });
   }
 
   async function handleSupprimer(id: number) {
+    setLoadingRows((prev) => new Set(prev).add(id));
     startTransition(async () => {
-      await supprimerTacheAction(id);
-      router.refresh();
+      try {
+        await supprimerTacheAction(id);
+        addToast("Tâche supprimée", "success");
+        router.refresh();
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "Erreur lors de la suppression", "error");
+      } finally {
+        setLoadingRows((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      }
     });
   }
 
@@ -209,10 +237,14 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
     reordered.splice(newIndex, 0, moved);
 
     startTransition(async () => {
-      await reordonnerTachesAction(reordered.map((t) => t.id));
-      router.refresh();
+      try {
+        await reordonnerTachesAction(reordered.map((t) => t.id));
+        router.refresh();
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "Erreur lors du réordonnancement", "error");
+      }
     });
-  }, [filtered, router]);
+  }, [filtered, router, addToast]);
 
   function resetFilters() {
     setFilterStatut("TOUS");
@@ -401,6 +433,7 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
                           onEdit={handleEdit}
                           onToggle={handleToggle}
                           onSupprimer={handleSupprimer}
+                          loading={loadingRows.has(tache.id)}
                         />
                       ))}
                     </AnimatePresence>

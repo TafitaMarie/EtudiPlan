@@ -8,10 +8,10 @@ interface StatCardProps {
 }
 
 const colorStyles = {
-  blue: "bg-blue-100/60 dark:bg-blue-950/50 text-blue-500 dark:text-blue-400",
-  green: "bg-green-100/60 dark:bg-green-950/50 text-green-500 dark:text-green-400",
-  orange: "bg-orange-100/60 dark:bg-orange-950/50 text-orange-500 dark:text-orange-400",
-  purple: "bg-purple-100/60 dark:bg-purple-950/50 text-purple-500 dark:text-purple-400",
+  blue: "bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400",
+  green: "bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400",
+  orange: "bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400",
+  purple: "bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400",
 };
 
 export default function StatCard({

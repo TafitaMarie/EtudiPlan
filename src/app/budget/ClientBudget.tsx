@@ -1,9 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import StatCard from "@/app/dashboard/statCard";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useState } from "react";
+import { useToast } from "@/app/contexts/toastProvider";
+import {
+  createTransactionAction,
+  updateTransactionAction,
+  deleteTransactionAction,
+} from "./actions";
 
 type Transaction = {
   id: number;
@@ -11,10 +18,6 @@ type Transaction = {
   categorie: string;
   montant: number;
   type: "REVENU" | "DEPENSE";
-  date: string;
-};
-
-type TransactionApi = Omit<Transaction, "date"> & {
   date: string;
 };
 
@@ -27,40 +30,42 @@ const couleursCategories: Record<string, string> = {
 };
 
 export default function ClientBudget({ transactions: initial }: { transactions: Transaction[] }) {
+  const router = useRouter();
+  const { addToast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>(initial || []);
   const [editing, setEditing] = useState<Transaction | null>(null);
 
-  const fetchTransactions = async () => {
-    const res = await fetch("/api/transactions");
-    const data = (await res.json()) as TransactionApi[];
-    setTransactions(data.map((t) => ({ ...t, date: new Date(t.date).toISOString() })));
-  };
-
   const createTransaction = async (payload: Partial<Transaction>) => {
-    await fetch("/api/transactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    await fetchTransactions();
+    try {
+      await createTransactionAction(payload as { libelle: string; categorie: string; montant: number; type: "REVENU" | "DEPENSE"; date?: string });
+      addToast("Transaction ajoutée", "success");
+      router.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Erreur lors de la création", "error");
+      throw e;
+    }
   };
 
   const updateTransaction = async (payload: Partial<Transaction> & { id: number }) => {
-    await fetch("/api/transactions", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    await fetchTransactions();
+    try {
+      const { id, ...data } = payload;
+      await updateTransactionAction(id, data as { libelle: string; categorie: string; montant: number; type: "REVENU" | "DEPENSE"; date?: string });
+      addToast("Transaction modifiée", "success");
+      router.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Erreur lors de la modification", "error");
+      throw e;
+    }
   };
 
   const deleteTransaction = async (id: number) => {
-    await fetch("/api/transactions", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    await fetchTransactions();
+    try {
+      await deleteTransactionAction(id);
+      addToast("Transaction supprimée", "success");
+      router.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Erreur lors de la suppression", "error");
+    }
   };
 
   const revenus = transactions
@@ -99,9 +104,9 @@ export default function ClientBudget({ transactions: initial }: { transactions: 
       </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Revenus" value={`${revenus} €`} icon={TrendingUp} color="green" />
-        <StatCard title="Dépenses" value={`${depenses} €`} icon={TrendingDown} color="orange" />
-        <StatCard title="Solde restant" value={`${solde} €`} icon={Wallet} color="blue" />
+        <StatCard title="Revenus" value={`${revenus} Ar`} icon={TrendingUp} color="green" />
+        <StatCard title="Dépenses" value={`${depenses} Ar`} icon={TrendingDown} color="orange" />
+        <StatCard title="Solde restant" value={`${solde} Ar`} icon={Wallet} color="blue" />
       </div>
 
       {transactions.length === 0 ? (
@@ -122,7 +127,7 @@ export default function ClientBudget({ transactions: initial }: { transactions: 
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`font-semibold ${t.type === "REVENU" ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
-                      {t.type === "REVENU" ? "+" : "-"}{t.montant} €
+                      {t.type === "REVENU" ? "+" : "-"}{t.montant} Ar
                     </span>
                     <button className="rounded-2xl bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-card-border transition-colors" onClick={() => setEditing(t)}>Éditer</button>
                     <button className="rounded-2xl bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors" onClick={() => deleteTransaction(t.id)}>Supprimer</button>
@@ -206,6 +211,8 @@ function TransactionForm({
       setType("DEPENSE");
       setDate(new Date().toISOString().slice(0, 16));
       onCancel();
+    } catch {
+      // erreur déjà gérée dans onUpdate/onCreate
     } finally {
       setLoading(false);
     }
