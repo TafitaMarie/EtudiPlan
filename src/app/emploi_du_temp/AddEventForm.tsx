@@ -1,20 +1,47 @@
 "use client";
 
-import { type ChangeEvent, useState } from "react";
-import { createEvent } from "./actions";
+import { type ChangeEvent, useState, useEffect } from "react";
+import { createEvent, updateEvent } from "./actions";
+import { Event } from "./courseBlock";
 
 type Props = {
   onAdded: () => void;
+  onCancelled?: () => void;
+  event?: Event | null;
 };
 
-export default function AddEventForm({ onAdded }: Props) {
+function toDatetimeLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+export default function AddEventForm({ onAdded, onCancelled, event: editEvent }: Props) {
   const [title, setTitle] = useState("");
   const [type, setType] = useState<"COURSE" | "EXAM">("COURSE");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [room, setRoom] = useState("");
   const [repeat, setRepeat] = useState<"NONE" | "WEEKLY">("NONE");
+  const [repeatEndDate, setRepeatEndDate] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isEditing = !!editEvent;
+
+  useEffect(() => {
+    if (editEvent) {
+      setTitle(editEvent.title);
+      setType(editEvent.type);
+      setStartDate(toDatetimeLocal(new Date(editEvent.startDate)));
+      setEndDate(editEvent.endDate ? toDatetimeLocal(new Date(editEvent.endDate)) : "");
+      setRoom(editEvent.room ?? "");
+      setRepeat(editEvent.repeat ?? "NONE");
+      setRepeatEndDate(editEvent.repeatEndDate ? toDatetimeLocal(new Date(editEvent.repeatEndDate)).slice(0, 16) : "");
+    }
+  }, [editEvent]);
 
   function today() {
     const now = new Date();
@@ -27,20 +54,29 @@ export default function AddEventForm({ onAdded }: Props) {
 
     setLoading(true);
     try {
-      await createEvent({
+      const payload = {
         title,
         type,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : new Date(startDate),
-        room,
-        color: "BLUE",
-        repeat: repeat === "WEEKLY" ? "WEEKLY" : undefined,
-      });
+        room: room || undefined,
+        color: "BLUE" as const,
+        repeat: repeat === "WEEKLY" ? "WEEKLY" as const : undefined,
+        repeatEndDate: repeat === "WEEKLY" && repeatEndDate ? new Date(repeatEndDate) : null,
+      };
+
+      if (isEditing) {
+        await updateEvent(editEvent.id, payload);
+      } else {
+        await createEvent(payload);
+      }
+
       setTitle("");
       setStartDate("");
       setEndDate("");
       setRoom("");
       setRepeat("NONE");
+      setRepeatEndDate("");
       onAdded();
     } catch {
       // silently fail for now
@@ -51,7 +87,9 @@ export default function AddEventForm({ onAdded }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-card-border bg-card p-6 space-y-4 shadow-sm">
-      <h3 className="font-semibold text-foreground">Ajouter un événement</h3>
+      <h3 className="font-semibold text-foreground">
+        {isEditing ? "Modifier l'événement" : "Ajouter un événement"}
+      </h3>
 
       <div>
         <label htmlFor="title" className="sr-only">Titre</label>
@@ -129,13 +167,38 @@ export default function AddEventForm({ onAdded }: Props) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Ajout en cours..." : "Ajouter"}
-      </button>
+      {repeat === "WEEKLY" && (
+        <div>
+          <label htmlFor="repeat-end-date" className="sr-only">Répéter jusqu'au</label>
+          <input
+            id="repeat-end-date"
+            type="date"
+            className="w-full rounded-2xl border border-card-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            value={repeatEndDate}
+            onChange={(e) => setRepeatEndDate(e.target.value)}
+            placeholder="Répéter jusqu'au (optionnel)"
+          />
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Enregistrement..." : isEditing ? "Enregistrer" : "Ajouter"}
+        </button>
+        {isEditing && onCancelled && (
+          <button
+            type="button"
+            onClick={onCancelled}
+            className="rounded-2xl border border-card-border px-5 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Annuler
+          </button>
+        )}
+      </div>
     </form>
   );
 }

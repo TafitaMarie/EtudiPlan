@@ -34,6 +34,7 @@ export const eventSchema = z.object({
   room: z.string().max(100).optional(),
   color: EventColorEnum.default("BLUE"),
   repeat: RepeatTypeEnum.default("NONE"),
+  repeatEndDate: z.coerce.date().nullable().optional(),
 });
 
 export const transactionSchema = z.object({

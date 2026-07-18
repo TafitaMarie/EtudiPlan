@@ -66,7 +66,47 @@ export async function toggleTacheAction(id: number, faiteActuelle: boolean) {
 
   await prisma.tache.update({
     where: { id },
-    data: { faite: !faiteActuelle },
+    data: {
+      faite: !faiteActuelle,
+      statut: !faiteActuelle ? "TERMINEE" : "A_FAIRE",
+    },
+  });
+
+  revalidatePath("/taches");
+}
+
+export async function modifierTacheAction(
+  id: number,
+  titre: string,
+  matiere: string | null,
+  dateLimite: string | null,
+  priorite: "BASSE" | "MOYENNE" | "HAUTE",
+  statut: "A_FAIRE" | "EN_COURS" | "TERMINEE"
+) {
+  const userId = await requireUserId();
+
+  const tache = await prisma.tache.findUnique({ where: { id } });
+  if (!tache || tache.userId !== userId) {
+    throw new Error("Tâche introuvable");
+  }
+
+  const parsed = tacheSchema.safeParse({ titre, matiere, dateLimite, priorite, statut });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues.map((e) => e.message).join(", "));
+  }
+
+  const { titre: t, matiere: m, dateLimite: d } = parsed.data;
+
+  await prisma.tache.update({
+    where: { id },
+    data: {
+      titre: t,
+      matiere: m && m.trim() !== "" ? m : null,
+      dateLimite: d ? new Date(d) : null,
+      priorite,
+      statut,
+      faite: statut === "TERMINEE",
+    },
   });
 
   revalidatePath("/taches");

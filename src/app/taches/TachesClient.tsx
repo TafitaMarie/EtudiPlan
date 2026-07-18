@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useState, useTransition, useCallback } from "react";
-import { Circle, CheckCircle2, Plus, Trash2, Search, X, GripVertical } from "lucide-react";
+import { Circle, CheckCircle2, Plus, Trash2, Search, X, GripVertical, Pencil } from "lucide-react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ajouterTacheAction,
+  modifierTacheAction,
   toggleTacheAction,
   supprimerTacheAction,
   reordonnerTachesAction,
@@ -34,8 +35,9 @@ const badgeStyles: Record<string, string> = {
   TERMINEE: "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300",
 };
 
-function SortableRow({ tache, onToggle, onSupprimer }: {
+function SortableRow({ tache, onEdit, onToggle, onSupprimer }: {
   tache: Tache;
+  onEdit: (tache: Tache) => void;
   onToggle: (id: number, faite: boolean) => void;
   onSupprimer: (id: number) => void;
 }) {
@@ -97,6 +99,13 @@ function SortableRow({ tache, onToggle, onSupprimer }: {
         <div className="flex justify-end gap-2">
           <button
             type="button"
+            onClick={() => onEdit(tache)}
+            className="rounded-2xl bg-muted px-3 py-2 text-xs font-medium text-foreground hover:bg-card-border transition-colors"
+          >
+            <Pencil size={14} className="inline" /> Modifier
+          </button>
+          <button
+            type="button"
             onClick={() => onToggle(tache.id, tache.faite)}
             className="rounded-2xl bg-muted px-3 py-2 text-xs font-medium text-foreground hover:bg-card-border transition-colors"
           >
@@ -124,6 +133,8 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
   const [priorite, setPriorite] = useState<"BASSE" | "MOYENNE" | "HAUTE">("MOYENNE");
   const [statut, setStatut] = useState<"A_FAIRE" | "EN_COURS" | "TERMINEE">("A_FAIRE");
 
+  const [editingTache, setEditingTache] = useState<Tache | null>(null);
+
   const [filterStatut, setFilterStatut] = useState<string>("TOUS");
   const [filterPriorite, setFilterPriorite] = useState<string>("TOUS");
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,14 +144,28 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
     if (titre.trim() === "") return;
 
     startTransition(async () => {
-      await ajouterTacheAction(titre, matiere || null, dateLimite || null, priorite, statut);
+      if (editingTache) {
+        await modifierTacheAction(editingTache.id, titre, matiere || null, dateLimite || null, priorite, statut);
+      } else {
+        await ajouterTacheAction(titre, matiere || null, dateLimite || null, priorite, statut);
+      }
       setTitre("");
       setMatiere("");
       setDateLimite("");
       setPriorite("MOYENNE");
       setStatut("A_FAIRE");
+      setEditingTache(null);
       router.refresh();
     });
+  }
+
+  function handleEdit(tache: Tache) {
+    setTitre(tache.titre);
+    setMatiere(tache.matiere ?? "");
+    setDateLimite(tache.dateLimite ? tache.dateLimite.slice(0, 10) : "");
+    setPriorite(tache.priorite);
+    setStatut(tache.statut);
+    setEditingTache(tache);
   }
 
   async function handleToggle(id: number, faite: boolean) {
@@ -204,8 +229,20 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
       >
         <form onSubmit={handleAjouter} className="rounded-[2rem] border border-card-border bg-card p-6 space-y-4 shadow-sm">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Plus size={20} /> Ajouter une tâche
+            {editingTache ? <><Plus size={20} /> Modifier la tâche</> : <><Plus size={20} /> Ajouter une tâche</>}
           </h2>
+          {editingTache && (
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">Modification de : <strong>{editingTache.titre}</strong></p>
+              <button
+                type="button"
+                onClick={() => { setEditingTache(null); setTitre(""); setMatiere(""); setDateLimite(""); setPriorite("MOYENNE"); setStatut("A_FAIRE"); }}
+                className="text-sm text-muted-foreground hover:text-foreground underline"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
 
           <div>
             <label htmlFor="titre" className="sr-only">Titre de la tâche</label>
@@ -279,7 +316,7 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
               disabled={isPending}
               className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending ? "Ajout en cours..." : "Ajouter"}
+              {isPending ? "Enregistrement..." : editingTache ? "Enregistrer" : "Ajouter"}
             </button>
           </div>
         </form>
@@ -339,21 +376,21 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
             {hasActiveFilters ? "Aucune tâche ne correspond aux filtres." : "Aucune tâche pour le moment."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-card-border text-sm">
-              <thead className="bg-muted text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-4 w-10"></th>
-                  <th className="px-6 py-4">Tâche</th>
-                  <th className="px-6 py-4">Matière</th>
-                  <th className="px-6 py-4">Date limite</th>
-                  <th className="px-6 py-4">Priorité</th>
-                  <th className="px-6 py-4">Statut</th>
-                  <th className="px-6 py-4">Réalisée</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-card-border text-sm">
+                <thead className="bg-muted text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-4 w-10"></th>
+                    <th className="px-6 py-4">Tâche</th>
+                    <th className="px-6 py-4">Matière</th>
+                    <th className="px-6 py-4">Date limite</th>
+                    <th className="px-6 py-4">Priorité</th>
+                    <th className="px-6 py-4">Statut</th>
+                    <th className="px-6 py-4">Réalisée</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
                 <SortableContext items={filtered.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                   <tbody className="divide-y divide-card-border">
                     <AnimatePresence>
@@ -361,6 +398,7 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
                         <SortableRow
                           key={tache.id}
                           tache={tache}
+                          onEdit={handleEdit}
                           onToggle={handleToggle}
                           onSupprimer={handleSupprimer}
                         />
@@ -368,9 +406,9 @@ export default function TachesClient({ taches }: { taches: Tache[] }) {
                     </AnimatePresence>
                   </tbody>
                 </SortableContext>
-              </DndContext>
-            </table>
-          </div>
+              </table>
+            </div>
+          </DndContext>
         )}
       </motion.div>
     </div>

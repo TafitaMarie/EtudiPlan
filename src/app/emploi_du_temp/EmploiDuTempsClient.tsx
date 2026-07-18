@@ -6,6 +6,7 @@ import { useState, useMemo } from "react";
 import DayColumn from "./dayColumn";
 import CourseBlock, { Event } from "./courseBlock";
 import { ChevronLeft, ChevronRight, Calendar, Grid3X3, CalendarDays, Plus, X } from "lucide-react";
+import { deleteEvent } from "./actions";
 
 type Props = {
   events: Event[];
@@ -33,10 +34,27 @@ function getStartOfWeek(date: Date) {
 export default function EmploiDuTempsClient({ events }: Props) {
   const [viewMode, setViewMode] = useState<"DAY" | "WEEK" | "MONTH">("WEEK");
   const [showAdd, setShowAdd] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const router = useRouter();
   const refresh = () => router.refresh();
+
+  async function handleDelete(id: number) {
+    await deleteEvent(id);
+    refresh();
+  }
+
+  function handleEdit(event: Event) {
+    setEditingEvent(event);
+    setShowAdd(true);
+  }
+
+  function handleFormDone() {
+    setShowAdd(false);
+    setEditingEvent(null);
+    refresh();
+  }
 
   const startOfWeek = useMemo(() => getStartOfWeek(selectedDate), [selectedDate]);
 
@@ -62,7 +80,10 @@ export default function EmploiDuTempsClient({ events }: Props) {
     events.filter((e) => {
       const eventDate = new Date(e.startDate);
       if (eventDate.toDateString() === day.toDateString()) return true;
-      if (e.repeat === "WEEKLY" && eventDate.getDay() === day.getDay() && eventDate <= day) return true;
+      if (e.repeat === "WEEKLY" && eventDate.getDay() === day.getDay() && eventDate <= day) {
+        if (e.repeatEndDate && day > new Date(e.repeatEndDate)) return false;
+        return true;
+      }
       return false;
     });
 
@@ -140,7 +161,13 @@ export default function EmploiDuTempsClient({ events }: Props) {
         </div>
       </div>
 
-      {showAdd && <AddEventForm onAdded={() => { refresh(); setShowAdd(false); }} />}
+      {showAdd && (
+        <AddEventForm
+          event={editingEvent}
+          onAdded={handleFormDone}
+          onCancelled={() => { setShowAdd(false); setEditingEvent(null); }}
+        />
+      )}
 
       {/* WEEK VIEW */}
       {viewMode === "WEEK" && (
@@ -154,6 +181,8 @@ export default function EmploiDuTempsClient({ events }: Props) {
                 ]
               }
               events={eventsForDay(d)}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           ))}
         </div>
@@ -173,7 +202,7 @@ export default function EmploiDuTempsClient({ events }: Props) {
             ) : (
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {dayEvents.map((event) => (
-                  <CourseBlock key={event.id} event={event} />
+                  <CourseBlock key={event.id} event={event} onEdit={handleEdit} onDelete={handleDelete} />
                 ))}
               </div>
             )}
